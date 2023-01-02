@@ -207,6 +207,11 @@ df.loc[df['TEMP'] > MAX_TEMP, 'TEMP'] = np.nan
 print(df.isna().sum() / df.shape[0] * 100)
 # pm_us_post_isna = df.loc['PM_US Post'].isna()
 # plt.hist(df.loc['PM_US Post'].isna(), density=True, alpha=0.5, bins=50, label = 'Broj nedostajućih merenja PM_US Post tokom vremena')
+
+print('unikatne vrednosti')
+print(np.sort(df['PRES'].unique()))
+print(np.sort(df['precipitation'].unique()))
+print(np.sort(df['Iprec'].unique()))
 """ ================================================ """
 print_red(
     "5. Izbaciti obeležja koja se odnose na sve lokacije merenja koncentracije PM čestica osim US Post."
@@ -281,9 +286,6 @@ df['date'] = df['datetime'].dt.date
 # print(df_year.tail())
 
 print_red('index')
-print("ALOOOO")
-print("Koji se smerovi vetra javljaju u bazi?")
-# df.set_index('date', inplace=True)
 df["cbwdx"] = 0
 df["cbwdy"] = 0
 df.loc[df['cbwd'] == "NE", "cbwdx"] = 1
@@ -319,7 +321,7 @@ df["Iprec"].plot(ax=axes[1, 3])
 
 # TODO: korelacija sa izvodom
 
-plt.figure()
+# plt.figure()
 fig, axes = plt.subplots(nrows=2, ncols=4)
 axes[0, 0].set_title("DEWP")
 axes[0, 0].hist(
@@ -346,7 +348,7 @@ axes[0, 2].hist(
     label='PRES',
 )
 axes[0, 3].set_title("TEMP")
-axes[0, 2].hist(
+axes[0, 3].hist(
     df['TEMP'],
     bins=100,
     density=True,
@@ -354,7 +356,7 @@ axes[0, 2].hist(
     label='TEMP',
 )
 axes[1, 0].set_title("cbwd")
-df_cbwd_count = df.groupby("cbwd").agg('count')
+df_cbwd_count = df.groupby("cbwd").agg('count') / df.shape[0]
 df_cbwd_count['index'].plot.bar(ax=axes[1, 0])
 
 axes[1, 1].set_title("Iws")
@@ -381,10 +383,6 @@ axes[1, 3].hist(
     alpha=0.3,
     label='Iprec',
 )
-plt.figure()
-
-plt.figure()
-
 plt.show()
 """ ================================================ """
 print_red("8. Analizirati detaljno vrednosti obeležja PM 2.5 (’PM_US Post’).")
