@@ -1,0 +1,220 @@
+# učitavanje biblioteka
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class bcolors:
+    """
+    Klasa konstanti. Predstavljaju opcije kojima možemo stilizovati tekst prilikom ispisa.
+    """
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def print_red(text):
+    """
+    Ispisati tekst u crvenoj boji.
+
+    Funkcija je namenjena naglašavanju pitanja (zadataka) i razlikovanju pitanja od odgovora.
+    """
+    print(bcolors.FAIL + text + bcolors.ENDC)
+
+def implication(p, q):
+    """
+    Logička implikacija.
+    """
+    return not(p) or q
+
+def equal(p, q):
+    """
+    Logička jednakost.
+    """
+    return implication(p,q) and implication(q,p)
+
+# podešavanja ispisa
+pd.set_option('display.float_format', lambda x: '%.2f' % x) # prikaz df na 2 decimale (npr. za describe)
+
+""" ================================================ """
+print_red(bcolors.BOLD + bcolors.UNDERLINE + "I DEO: ANALIZA PODATAKA")
+""" ================================================ """
+print_red("1. Broj svog indeksa (bez godine) podeliti po modulu 5 - dobijeni broj označava bazu na kojoj treba raditi. \n   U pitanju su baze koje se tiču vremenskih uslova u 5 različitih gradova u Kini.")
+print("Broj indeksa: DE4/2021 → Baza 4: Šenjang - ShenyangPM20100101_20151231.csv")
+
+""" ================================================ """
+print_red("2. Sa moodle platforme skinuti bazu podataka koja je dobijena na osnovu broja indeksa.")
+print("Ubačena je u radni folder.")
+df = pd.read_csv('ShenyangPM20100101_20151231.csv')
+
+""" ================================================ """
+print_red("3. Učitati bazu u DataFrame. Proveriti kako izgleda prvih nekoliko vrsta u bazi.")
+print("Prikaz prvih 5 uzoraka")
+print(df.head())
+
+""" ================================================ """
+print_red("4a. Koliko ima obeležja? Koliko ima uzoraka?")
+print("Obeležja ima " + str(df.shape[1]) + ", pri čemu je prvo obeležje redni broj uzorka.")
+print("Uzoraka ima " + str(df.shape[0]) + ", odnosno broj kolona u csv tabeli minus jedan, jer prvi red predstavlja nazive kolona (obeležja).")
+
+print_red("4b. Šta predstavlja jedan uzorak baze?")
+print("Jedan uzorak predstavlja meteorološka merenja u datom vremenskom trenutku.")
+
+print_red("4c. Kojim obeležjima raspolažemo?")
+print("No - redni broj obeležja. Da li su obeležja vremenski sortirana po rastućem redosledu?")
+print()
+print("year - godina.")
+print("month - mesec.")
+print("day - dan. Da li je ispoštovano da mesec ima odgovarajući broj dana u godini?")
+print()
+print("hour - sat u danu. Da li svaki dan ima 24 sata?")
+print()
+print("season - godišnje doba. Prvo godišnje doba počinje 1. marta, drugo 1. juna, treće 1. septembra i četvrto 1. decembra.")
+# TODO: godišnje doba
+print()
+print("PM_Taiyuanjie - koncentracija PM2.5 čestica na lokaciji Taiyuanjie. [µg/m^3]")
+print("PM_US Post - koncentracija PM2.5 čestica na lokaciji US Post. [µg/m^3]")
+print("PM_Xiaoheyan - koncentracija PM2.5 čestica na lokaciji Xiaoheyan. [µg/m^3]")
+print("DEWP - temperatura rose/kondenzacije. [°C]")
+print("HUMI - vlažnost vazduha. [%]")
+print("PRES - vazdušni pritisak. [hPa]")
+print("TEMP - temperatura. [°C]")
+print("cbwd - pravac vetra (N-sever, S-jug, E-istok, W-zapad, cv-calm/variable)")
+# TODO: da li ima drugih slova
+print("Iws - kumulativna brzina vetra. [m/s]")
+# TODO: da li brzina vetra može biti negativna
+print("precipitation - padavine na sat. [mm]")
+print("Iprec - kumulativne padavine. [mm]")
+
+print_red("4d. Koja obeležja su kategorička, a koja numerička?")
+print("Kategorička obeležja su godina, mesec, dan, sat, sezona i cbwd.")
+print("Numerička obeležja su PM, DEWP, HUMI, PRES, TEMP, lws, precipitation i lprec.")
+print(df.dtypes)
+# Mogli smo koristiti i komandu df.info():
+# df.info()
+
+print_red("4e. Postoje li nedostajući podaci? Gde se javljaju i koliko ih je? Postoje li nelogične/nevalidne vrednosti?")
+number_of_days = 365+365+366+365+365+365
+print("Od 1.1.2010. do 31.12.2015. ima " + str(number_of_days) + " dana.")
+print("U svakom danu ima 24 časa, tako da bi priložena tabela trebala imati ukupno " + str(24*number_of_days) + " uzoraka, što i ima.")
+print("Koje se godine javljaju u bazi?")
+print(df['year'].unique())
+print("Koji se meseci javljaju u bazi?")
+print(df['month'].unique())
+print("Koji se dani javljaju u bazi?")
+print(df['day'].unique())
+print("Koji se časovi javljaju u bazi?")
+print(df['hour'].unique())
+print("Koji se smerovi vetra javljaju u bazi?")
+print(df['cbwd'].unique())
+print("Da li je prvo godišnje doba uvek od 1. marta do 31. maja?")
+assert all([equal(season == 1, (month >= 3) and (month <= 5)) for month, season in zip(df['month'], df['season'])])
+print("Da.")
+print("Da li je drugo godišnje doba uvek od 1. juna do 31. avgusta?")
+assert all([equal(season == 2, (month >= 6) and (month <= 8)) for month, season in zip(df['month'], df['season'])])
+print("Da.")
+print("Da li je treće godišnje doba uvek od 1. septembra do 30. novembra?")
+assert all([equal(season == 3, (month >= 9) and (month <= 11)) for month, season in zip(df['month'], df['season'])])
+print("Da.")
+print("Da li je četvrto godišnje doba uvek od 1. decembra do 28. (29.) februara?")
+assert all([equal(season == 4, (month == 12) or (month == 1) or (month == 2)) for month, season in zip(df['month'], df['season'])])
+print("Da.")
+print("Da li svaki dan ima tačno 24 časa?")
+# https://www.statology.org/pandas-groupby-count-with-condition/
+
+print("Da.")
+print("Da li februar ima uvek 28 dana izuzev prestupne 2012. godine?")
+assert all([implication(month == 2, ((day >= 1) and (day <= 28)) or ((day == 29) and (year == 2012))) for year, month, day in zip(df['year'], df['month'], df['day'])])
+df.groupby(by=["month"]).count()
+print("Da.")
+
+print("Najniža ikad zabeležena temperatura u Šenjangu iznosi -32.9°C, a najviša zabeležena temperatura iznosi 38.4°C.")
+# https://www.extremeweatherwatch.com/cities/shenyang/lowest-temperatures
+# https://www.extremeweatherwatch.com/cities/shenyang/highest-temperatures
+print("Da li su izmerene temperature u okvirima dozvoljenih?")
+MIN_TEMP = -32.9
+MAX_TEMP = 38.4
+df.loc[df['TEMP'] < MIN_TEMP, 'TEMP'] = np.nan
+df.loc[df['TEMP'] > MAX_TEMP, 'TEMP'] = np.nan
+
+
+# TODO: da li se neki datumi, vremena pojavljuju više puta?
+# TODO: da li postoje 
+
+# TODO: 12 meseci uvek, odgovarajući broj dana, svaki dan tačno 24 časa, temp vrednosti u okvirima dozvoljenih
+
+# TODO: histogram nedostajućih vrednosti
+print(df.isna().sum() / df.shape[0] * 100)
+# pm_us_post_isna = df.loc['PM_US Post'].isna()
+# plt.hist(df.loc['PM_US Post'].isna(), density=True, alpha=0.5, bins=50, label = 'Broj nedostajućih merenja PM_US Post tokom vremena')
+
+""" ================================================ """
+print_red("5. Izbaciti obeležja koja se odnose na sve lokacije merenja koncentracije PM čestica osim US Post.")
+df.drop(['PM_Taiyuanjie'], axis=1, inplace=True)
+df.drop(['PM_Xiaoheyan'], axis=1, inplace=True)
+print(df.head())
+
+""" ================================================ """
+print_red("6. Ukoliko postoje nedostajući podaci, rešiti taj problem na odgovarajući način. Objasniti zašto je rešeno na odabrani način.")
+print(df.isna().sum() / df.shape[0] * 100)
+print("Postoji 58.77% nedostajućih podataka za PM_US Post. Vrste gde nedostaju podaci za PM_US Post moramo ukloniti.")
+df.dropna(inplace=True, subset=['PM_US Post'])
+print(df.isna().sum() / df.shape[0] * 100)
+print("Zapažanje: Vrste gde nedostaju vrednosti za PM_US Post su ujedno i vrste gde nedostaju podaci za DEWP, HUMI, PRES, TEMP, cbwd i Iws. Takođe, značajno je smanjen broj nedostajućih podataka za precipitation i Iprec.")
+print("Broj nedostajućih vrednosti za DEWP: ")
+print(df['DEWP'].isna().sum())
+print("Broj nedostajućih vrednosti za HUMI: ")
+print(df['HUMI'].isna().sum())
+print("Broj nedostajućih vrednosti za PRES: ")
+print(df['PRES'].isna().sum())
+print("Broj nedostajućih vrednosti za TEMP: ")
+print(df['TEMP'].isna().sum())
+print("Broj nedostajućih vrednosti za cbwd: ")
+print(df['cbwd'].isna().sum())
+print("Broj nedostajućih vrednosti za Iws: ")
+print(df['Iws'].isna().sum())
+print("Procenat nedostajućih vrednosti za precipitation: ")
+print(df['precipitation'].isna().sum() / df.shape[0] * 100)
+print("Procenat nedostajućih vrednosti za Iprec: ")
+print(df['Iprec'].isna().sum() / df.shape[0] * 100)
+print("Prikazati kolonu gde nedostaju podaci za DEWP:")
+print(df[df['DEWP'].isna()])
+print("U istoj koloni nedostaju svi podaci. Tu kolonu moramo obrisati.")
+print("Trenutne dimenzije naše tabele: " + str(df.shape))
+df.dropna(inplace=True, subset=['DEWP'])
+print("Dimenzije naše tabele nakon brisanja: " + str(df.shape))
+print("Broj nedostajućih vrednosti za DEWP: ")
+print(df['DEWP'].isna().sum())
+print("Broj nedostajućih vrednosti za HUMI: ")
+print(df['HUMI'].isna().sum())
+print("Broj nedostajućih vrednosti za PRES: ")
+print(df['PRES'].isna().sum())
+print("Broj nedostajućih vrednosti za TEMP: ")
+print(df['TEMP'].isna().sum())
+print("Broj nedostajućih vrednosti za cbwd: ")
+print(df['cbwd'].isna().sum())
+print("Broj nedostajućih vrednosti za Iws: ")
+print(df['Iws'].isna().sum())
+print("Preostaje da još samo sredimo podatke vezane za precipitation i Iprec. Najjednostavnije je primeniti forward fill.")
+df['precipitation'].fillna(method='ffill', inplace=True)
+df['Iprec'].fillna(method='ffill', inplace=True)
+print(df.head())
+
+""" ================================================ """
+print_red("7. Analizirati obeležja (statističke veličine, raspodela, …)")
+
+""" ================================================ """
+print_red("8. Analizirati detaljno vrednosti obeležja PM 2.5 (’PM_US Post’).")
+
+""" ================================================ """
+print_red("9. Vizuelizovati i iskomentarisati zavisnost promene PM 2.5 od preostalih obeležja u bazi.")
+
+""" ================================================ """
+print_red("10. Analizirati međusobne korelacije obeležja.")
+
+""" ================================================ """
+print_red("11. Uraditi još nešto po sopstvenom izboru (takođe obavezna stavka).")
