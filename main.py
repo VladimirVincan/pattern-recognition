@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sb
 
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import Normalizer, StandardScaler, PolynomialFeatures
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
 
 class bcolors:
     """
@@ -370,29 +375,77 @@ axes[1, 1].hist(
 axes[1, 2].set_title("precipitation")
 axes[1, 2].hist(
     df['precipitation'],
-    bins=100,
+    bins=25,
     density=True,
     alpha=0.3,
+    stacked=True,
     label='precitipation',
 )
 axes[1, 3].set_title("Iprec")
 axes[1, 3].hist(
     df['Iprec'],
-    bins=100,
+    bins=70,
     density=True,
     alpha=0.3,
     label='Iprec',
 )
-plt.show()
+# TODO: srediti brzinu vetra
 """ ================================================ """
 print_red("8. Analizirati detaljno vrednosti obeležja PM 2.5 (’PM_US Post’).")
 df_pm = df.set_index('PM_US Post')
+fig, axes = plt.subplots(nrows=1, ncols=3)
+axes[0].set_title("PM_US Post")
+df["PM_US Post"].plot(ax=axes[0])
+axes[1].set_title("PM_US Post hist")
+axes[1].hist(
+    df['PM_US Post'],
+    bins=100,
+    density=True,
+    alpha=0.3,
+    label='PM_US Post',
+)
+df.plot.scatter(x='index', y='PM_US Post', c='b', ax=axes[2])
+# axes[0, 2].plot(df["PM_US Post"], 'b', label='PM_US Post', linestyle='dotted')
+# TODO: uraditi low pass filtar i isplotovati
 """ ================================================ """
 print_red(
     "9. Vizuelizovati i iskomentarisati zavisnost promene PM 2.5 od preostalih obeležja u bazi."
 )
+
+fig, axes = plt.subplots(nrows=3, ncols=4)
+df.plot.scatter(y='PM_US Post', x='year', c='b', ax=axes[0, 0])
+df.plot.scatter(y='PM_US Post', x='season', c='b', ax=axes[0, 1])
+df.plot.scatter(y='PM_US Post', x='doy', c='b', ax=axes[0, 2])
+df.plot.scatter(y='PM_US Post', x='hour', c='b', ax=axes[0, 3])
+df.plot.scatter(y='PM_US Post', x='DEWP', c='b', ax=axes[1, 0])
+df.plot.scatter(y='PM_US Post', x='TEMP', c='b', ax=axes[1, 1])
+df.plot.scatter(y='PM_US Post', x='HUMI', c='b', ax=axes[1, 2])
+df.plot.scatter(y='PM_US Post', x='PRES', c='b', ax=axes[1, 3])
+df.plot.scatter(y='PM_US Post', x='Iws', c='b', ax=axes[2, 0])
+df.plot.scatter(y='PM_US Post', x='precipitation', c='b', ax=axes[2, 1])
+df.plot.scatter(y='PM_US Post', x='Iprec', c='b', ax=axes[2, 2])
+# TODO: 3d grafik zavisnosti vetra i PM cestica
 """ ================================================ """
 print_red("10. Analizirati međusobne korelacije obeležja.")
+plt.figure()
+matrica_korelacije = df.corr()
+sb.heatmap(matrica_korelacije, annot=True)
+# TODO: usrednjiti vrednosti da dobijemo vecu korelisanost
+# Pritisak i temperatura treba da imaju negativnu povezanost, jer ...
+# vlaznost treba da bude linearno proporcionalna temperaturi, sto nije ispunjeno
+# planina je na istoku, ima smisla da jaci vetar duva ka zapadu.
 """ ================================================ """
 print_red(
     "11. Uraditi još nešto po sopstvenom izboru (takođe obavezna stavka).")
+plt.show()
+""" ================================================ """
+print_red(bcolors.BOLD + bcolors.UNDERLINE + "II DEO: ANALIZA PODATAKA")
+""" ================================================ """
+# sklearn.
+print_red(
+    "1. Potrebno je 15% nasumično izabranih uzoraka ostaviti kao test skup, 15% kao validacioni a preostalih 70% koristiti za obuku modela."
+)
+x_train, x_test, y_train, y_test = train_test_split(x=df['HUMI'],
+                                                    y=df['PM_US Post'],
+                                                    test_size=0.3,
+                                                    random_state=42)
