@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sb
+import utils
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import Normalizer, StandardScaler, PolynomialFeatures
@@ -437,15 +438,98 @@ sb.heatmap(matrica_korelacije, annot=True)
 """ ================================================ """
 print_red(
     "11. Uraditi još nešto po sopstvenom izboru (takođe obavezna stavka).")
-plt.show()
+# plt.show()
 """ ================================================ """
 print_red(bcolors.BOLD + bcolors.UNDERLINE + "II DEO: ANALIZA PODATAKA")
 """ ================================================ """
-# sklearn.
 print_red(
     "1. Potrebno je 15% nasumično izabranih uzoraka ostaviti kao test skup, 15% kao validacioni a preostalih 70% koristiti za obuku modela."
 )
-x_train, x_test, y_train, y_test = train_test_split(x=df['HUMI'],
-                                                    y=df['PM_US Post'],
+# X = df.drop(columns=['PM_US Post', 'cbwd', 'date', 'datetime']).copy()
+X = df.loc[:, ['TEMP', 'PRES']]
+X.head()
+print("x head")
+# X = np.asarray(X).reshape(-1, 1)
+# X.reshape(-1, 1)
+y = df['PM_US Post'].copy()
+# y = y.to_numpy().as_array().reshape(-1, 1)
+# y = np.asarray(y).reshape(-1, 1)
+X_train, X_test, y_train, y_test = train_test_split(X,
+                                                    y,
                                                     test_size=0.3,
                                                     random_state=42)
+X_test, X_val, y_test, y_val = train_test_split(X_test,
+                                                y_test,
+                                                test_size=0.5,
+                                                random_state=42)
+print(f'Training set size: {len(X_train)}')
+print(f'Test set size: {len(X_test)}')
+print(f'Validation set size: {len(X_val)}')
+
+# plt.figure()
+# utils.plot_train_cv_test(X_train,
+#                          y_train,
+#                          X_val,
+#                          y_val,
+#                          X_test,
+#                          y_test,
+#                          title="input vs. target")
+
+print('Podaci su skalirani preko Standard Scalera')
+scaler_linear = StandardScaler()
+X_train_scaled = scaler_linear.fit_transform(X_train)
+# print(
+#     f"Computed mean of the training set: {scaler_linear.mean_.squeeze():.2f}")
+# print(
+#     f"Computed standard deviation of the training set: {scaler_linear.scale_.squeeze():.2f}"
+# )
+utils.plot_dataset(x=X_train_scaled,
+                   y=y_train,
+                   title="scaled input vs. target")
+
+linear_model = LinearRegression(fit_intercept=True)
+linear_model.fit(X_train_scaled, y_train)
+
+yhat = linear_model.predict(X_train_scaled)
+print(
+    f"training MSE (using sklearn function): {mean_squared_error(y_train, yhat) / 2}"
+)
+
+X_val_scaled = scaler_linear.transform(X_val)
+yhat_val = linear_model.predict(X_val_scaled)
+print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
+
+X_test_scaled = scaler_linear.transform(X_test)
+yhat_test = linear_model.predict(X_test_scaled)
+print(f"Cross validation MSE: {mean_squared_error(yhat_test, y_test) / 2}")
+
+# TODO : SGDRegress
+
+
+def model_evaluation(y, y_predicted, N, d):
+    mse = mean_squared_error(y_test,
+                             y_predicted)  # np.mean((y_test-y_predicted)**2)
+    mae = mean_absolute_error(
+        y_test, y_predicted)  # np.mean(np.abs(y_test-y_predicted))
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test, y_predicted)
+    r2_adj = 1 - (1 - r2) * (N - 1) / (N - d - 1)
+
+    # printing values
+    print('Mean squared error: ', mse)
+    print('Mean absolute error: ', mae)
+    print('Root mean squared error: ', rmse)
+    print('R2 score: ', r2)
+    print('R2 adjusted score: ', r2_adj)
+
+    # Uporedni prikaz nekoliko pravih i predvidjenih vrednosti
+    res = pd.concat([pd.DataFrame(y.values),
+                     pd.DataFrame(y_predicted)],
+                    axis=1)
+    res.columns = ['y', 'y_pred']
+    print(res.head(20))
+
+
+model_evaluation(y_test, yhat_test, X_train_scaled.shape[0],
+                 X_train_scaled.shape[1])
+plt.show()
