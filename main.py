@@ -408,6 +408,10 @@ axes[1].hist(
 df.plot.scatter(x='index', y='PM_US Post', c='b', ax=axes[2])
 # axes[0, 2].plot(df["PM_US Post"], 'b', label='PM_US Post', linestyle='dotted')
 # TODO: uraditi low pass filtar i isplotovati
+
+# TODO: promene po mesecima, po danu, po satu
+
+# TODO: PM veći od 500 ukloniti
 """ ================================================ """
 print_red(
     "9. Vizuelizovati i iskomentarisati zavisnost promene PM 2.5 od preostalih obeležja u bazi."
@@ -445,15 +449,10 @@ print_red(bcolors.BOLD + bcolors.UNDERLINE + "II DEO: ANALIZA PODATAKA")
 print_red(
     "1. Potrebno je 15% nasumično izabranih uzoraka ostaviti kao test skup, 15% kao validacioni a preostalih 70% koristiti za obuku modela."
 )
-# X = df.drop(columns=['PM_US Post', 'cbwd', 'date', 'datetime']).copy()
-X = df.loc[:, ['TEMP', 'PRES']]
-X.head()
-print("x head")
-# X = np.asarray(X).reshape(-1, 1)
-# X.reshape(-1, 1)
+
+X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx']]
+print(X.head())
 y = df['PM_US Post'].copy()
-# y = y.to_numpy().as_array().reshape(-1, 1)
-# y = np.asarray(y).reshape(-1, 1)
 X_train, X_test, y_train, y_test = train_test_split(X,
                                                     y,
                                                     test_size=0.3,
@@ -466,44 +465,60 @@ print(f'Training set size: {len(X_train)}')
 print(f'Test set size: {len(X_test)}')
 print(f'Validation set size: {len(X_val)}')
 
-# plt.figure()
-# utils.plot_train_cv_test(X_train,
-#                          y_train,
-#                          X_val,
-#                          y_val,
-#                          X_test,
-#                          y_test,
-#                          title="input vs. target")
+train_mses = []
+val_mses = []
+models = []
+scalers = []
 
 print('Podaci su skalirani preko Standard Scalera')
-scaler_linear = StandardScaler()
-X_train_scaled = scaler_linear.fit_transform(X_train)
-# print(
-#     f"Computed mean of the training set: {scaler_linear.mean_.squeeze():.2f}")
-# print(
-#     f"Computed standard deviation of the training set: {scaler_linear.scale_.squeeze():.2f}"
-# )
-utils.plot_dataset(x=X_train_scaled,
-                   y=y_train,
-                   title="scaled input vs. target")
+for degree in range(1, 11):
+    poly = PolynomialFeatures(degree, include_bias=False)
+    X_train_poly = poly.fit_transform(X_train)
 
-linear_model = LinearRegression(fit_intercept=True)
-linear_model.fit(X_train_scaled, y_train)
+    scaler_poly = StandardScaler()
+    X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
 
-yhat = linear_model.predict(X_train_scaled)
-print(
-    f"training MSE (using sklearn function): {mean_squared_error(y_train, yhat) / 2}"
-)
+    print(X_train_scaled_poly.shape)
+    X_train_scaled_poly['pd'] = X_train_scaled_poly['PRES'].mul(
+        X_train_scaled_poly['DEWP'])
+    X_train_scaled_poly['pt'] = X_train_scaled_poly['PRES'].mul(
+        X_train_scaled_poly['TEMP'])
+    X_train_scaled_poly['dt'] = X_train_scaled_poly['DEWP'].mul(
+        X_train_scaled_poly['TEMP'])
+    X_train_scaled_poly['pdt'] = X_train_scaled_poly['PRES'].mul(
+        X_train_scaled_poly['DEWP'].mul(X_train_scaled_poly['TEMP']))
+    scalers.append(scaler_poly)
 
-X_val_scaled = scaler_linear.transform(X_val)
-yhat_val = linear_model.predict(X_val_scaled)
-print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
+    linear_model = LinearRegression(fit_intercept=True)
+    linear_model.fit(X_train_scaled_poly, y_train)
+    models.append(linear_model)
 
-X_test_scaled = scaler_linear.transform(X_test)
-yhat_test = linear_model.predict(X_test_scaled)
-print(f"Cross validation MSE: {mean_squared_error(yhat_test, y_test) / 2}")
+    yhat = linear_model.predict(X_train_scaled_poly)
+    print(
+        f"training MSE (using sklearn function): {mean_squared_error(y_train, yhat) / 2}"
+    )
+    train_mses.append(mean_squared_error(y_train, yhat) / 2)
 
-# TODO : SGDRegress
+    X_val_poly = poly.fit_transform(X_val)
+    X_val_scaled_poly = scaler_poly.transform(X_val_poly)
+    yhat_val = linear_model.predict(X_val_scaled_poly)
+    print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
+    val_mses.append(mean_squared_error(yhat_val, y_val) / 2)
+
+    print("-" * 100)
+
+    # TODO : SGDRegress
+
+degrees = range(1, 11)
+utils.plot_train_cv_mses(degrees,
+                         train_mses,
+                         val_mses,
+                         title="degree of polynomial vs. train and CV MSEs")
+
+# X_test_poly = poly.fit_transform(X_test)
+# X_test_scaled_poly = scaler_linear.transform(X_test_poly)
+# yhat_test = linear_model.predict(X_test_scaled_poly)
+# print(f"Cross validation MSE: {mean_squared_error(yhat_test, y_test) / 2}")
 
 
 def model_evaluation(y, y_predicted, N, d):
