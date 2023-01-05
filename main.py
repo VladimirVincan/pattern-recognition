@@ -451,6 +451,10 @@ print_red(
 )
 
 X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx']]
+X['pt'] = X['PRES'] * X['TEMP']
+X['pd'] = X['PRES'] * X['DEWP']
+X['td'] = X['TEMP'] * X['DEWP']
+X['ptd'] = X['PRES'] * X['TEMP'] * X['DEWP']
 print(X.head())
 y = df['PM_US Post'].copy()
 X_train, X_test, y_train, y_test = train_test_split(X,
@@ -472,21 +476,22 @@ scalers = []
 
 print('Podaci su skalirani preko Standard Scalera')
 for degree in range(1, 11):
+    # https://datascience.stackexchange.com/questions/20525/should-i-standardize-first-or-generate-polynomials-first
     poly = PolynomialFeatures(degree, include_bias=False)
     X_train_poly = poly.fit_transform(X_train)
 
     scaler_poly = StandardScaler()
     X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
 
-    print(X_train_scaled_poly.shape)
-    X_train_scaled_poly['pd'] = X_train_scaled_poly['PRES'].mul(
-        X_train_scaled_poly['DEWP'])
-    X_train_scaled_poly['pt'] = X_train_scaled_poly['PRES'].mul(
-        X_train_scaled_poly['TEMP'])
-    X_train_scaled_poly['dt'] = X_train_scaled_poly['DEWP'].mul(
-        X_train_scaled_poly['TEMP'])
-    X_train_scaled_poly['pdt'] = X_train_scaled_poly['PRES'].mul(
-        X_train_scaled_poly['DEWP'].mul(X_train_scaled_poly['TEMP']))
+    # print(X_train_scaled_poly.shape)
+    # X_train_scaled_poly['pd'] = X_train_scaled_poly['PRES'] *
+    #     X_train_scaled_poly['DEWP']
+    # X_train_scaled_poly['pt'] = X_train_scaled_poly['PRES'].mul(
+    #     X_train_scaled_poly['TEMP'])
+    # X_train_scaled_poly['dt'] = X_train_scaled_poly['DEWP'].mul(
+    #     X_train_scaled_poly['TEMP'])
+    # X_train_scaled_poly['pdt'] = X_train_scaled_poly['PRES'].mul(
+    #     X_train_scaled_poly['DEWP'].mul(X_train_scaled_poly['TEMP']))
     scalers.append(scaler_poly)
 
     linear_model = LinearRegression(fit_intercept=True)
