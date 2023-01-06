@@ -443,6 +443,11 @@ sb.heatmap(matrica_korelacije, annot=True)
 print_red(
     "11. Uraditi još nešto po sopstvenom izboru (takođe obavezna stavka).")
 # plt.show()
+
+
+
+
+
 """ ================================================ """
 print_red(bcolors.BOLD + bcolors.UNDERLINE + "II DEO: ANALIZA PODATAKA")
 """ ================================================ """
@@ -474,7 +479,43 @@ val_mses = []
 models = []
 scalers = []
 
-print('Podaci su skalirani preko Standard Scalera')
+print('Testiraće se modeli sa sledećim parametrima: sa i bez normalizacije, sa Lasso, Ridge i bez regularizacije, za različite veličine polinoma fitovanja, sa i bez interakcije fičera i različite grupe fičera, sa MSE i gradient descent metodom sa različitim faktorom učenja. ')
+print('Ukupno ima 2*3*10=60 kombinacija ne računajući izbor fičera.')
+
+
+def test_model(normalization=False, regularization=None, degree=1, features=['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx'], method='MSE', alpha=None):
+    print('TEST TEST TEST')
+    poly = PolynomialFeatures(degree, include_bias=False)
+    X_train_poly = poly.fit_transform(X_train)
+
+    scaler_poly = StandardScaler()
+    X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
+
+    scalers.append(scaler_poly)
+
+    linear_model = LinearRegression(fit_intercept=True)
+    linear_model.fit(X_train_scaled_poly, y_train)
+    models.append(linear_model)
+
+    yhat = linear_model.predict(X_train_scaled_poly)
+    print(
+        f"training MSE (using sklearn function): {mean_squared_error(y_train, yhat) / 2}"
+    )
+    train_mses.append(mean_squared_error(y_train, yhat) / 2)
+
+    X_val_poly = poly.fit_transform(X_val)
+    X_val_scaled_poly = scaler_poly.transform(X_val_poly)
+    yhat_val = linear_model.predict(X_val_scaled_poly)
+    print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
+    val_mses.append(mean_squared_error(yhat_val, y_val) / 2)
+
+    print("-" * 100)
+
+test_model()
+print('val mses = ')
+print(val_mses)
+
+
 for degree in range(1, 11):
     # https://datascience.stackexchange.com/questions/20525/should-i-standardize-first-or-generate-polynomials-first
     poly = PolynomialFeatures(degree, include_bias=False)
@@ -483,15 +524,6 @@ for degree in range(1, 11):
     scaler_poly = StandardScaler()
     X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
 
-    # print(X_train_scaled_poly.shape)
-    # X_train_scaled_poly['pd'] = X_train_scaled_poly['PRES'] *
-    #     X_train_scaled_poly['DEWP']
-    # X_train_scaled_poly['pt'] = X_train_scaled_poly['PRES'].mul(
-    #     X_train_scaled_poly['TEMP'])
-    # X_train_scaled_poly['dt'] = X_train_scaled_poly['DEWP'].mul(
-    #     X_train_scaled_poly['TEMP'])
-    # X_train_scaled_poly['pdt'] = X_train_scaled_poly['PRES'].mul(
-    #     X_train_scaled_poly['DEWP'].mul(X_train_scaled_poly['TEMP']))
     scalers.append(scaler_poly)
 
     linear_model = LinearRegression(fit_intercept=True)
