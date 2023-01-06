@@ -9,7 +9,7 @@ import utils
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import Normalizer, StandardScaler, PolynomialFeatures
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, SGDRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 
@@ -494,13 +494,37 @@ print('Ukupno ima 2*3*10=60 kombinacija ne računajući izbor fičera.')
 print('Pretpostavka: treba prvo polinomijalne fičere napraviti pa onda skalirati.')
 
 
-def train_model(normalization=False, regularization=None, reg_coef=None, degree=1, features=['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx'], method='MSE', alpha=None):
+def model_evaluation(y, y_predicted, N, d):
+    mse = mean_squared_error(y_test,
+                             y_predicted)  # np.mean((y_test-y_predicted)**2)
+    mae = mean_absolute_error(
+        y_test, y_predicted)  # np.mean(np.abs(y_test-y_predicted))
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test, y_predicted)
+    r2_adj = 1 - (1 - r2) * (N - 1) / (N - d - 1)
+
+    # printing values
+    print('Mean squared error: ', mse)
+    print('Mean absolute error: ', mae)
+    print('Root mean squared error: ', rmse)
+    print('R2 score: ', r2)
+    print('R2 adjusted score: ', r2_adj)
+
+    # Uporedni prikaz nekoliko pravih i predvidjenih vrednosti
+    res = pd.concat([pd.DataFrame(y.values),
+                     pd.DataFrame(y_predicted)],
+                    axis=1)
+    res.columns = ['y', 'y_pred']
+    print(res.head(20))
+
+
+def train_model(normalization=False, method='MSE', alpha=None, degree=1, features=['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx']):
     # https://datascience.stackexchange.com/questions/20525/should-i-standardize-first-or-generate-polynomials-first
-    if regularization is None:
+    if method == 'MSE':
         print_yellow(f"Model: norm={normalization}, deg={degree}, method={method}")
     else:
-        print_yellow(f"Model: norm={normalization}, reg={regularization}, reg_coef={reg_coef}, deg={degree}, method={method}")
-    params_dict = {"norm":normalization, "reg":regularization, "deg":degree, "features":features, "method":method, "alpha":alpha}
+        print_yellow(f"Model: norm={normalization}, method={method}, alpha={alpha}, deg={degree}, method={method}")
+    params_dict = {"norm":normalization, "deg":degree, "features":features, "method":method, "alpha":alpha}
     params.append(params_dict)
 
     X_train_curr = X_train.loc[:, features]
@@ -521,10 +545,12 @@ def train_model(normalization=False, regularization=None, reg_coef=None, degree=
 
     scalers.append(scaler_poly)
 
-    if regularization == 'ridge':
-        model = Ridge(alpha = reg_coef)
-    elif regularization == 'lasso':
-        model = Lasso(alpha = reg_coef)
+    if method == 'ridge':
+        model = Ridge(alpha=alpha)
+    elif method == 'lasso':
+        model = Lasso(alpha=alpha)
+    elif method == 'SGD':
+        model = SGDRegressor(alpha=alpha)
     else:
         model = LinearRegression(fit_intercept=True)
     model.fit(X_train_scaled_poly, y_train)
@@ -560,7 +586,7 @@ def test_model(model_number, params_dict):
         X_test_poly_scaled = X_test_poly
     yhat_test = models[model_number].predict(X_test_poly_scaled)
     print(f"test MSE: {mean_squared_error(yhat_test, y_test) / 2}")
-    # model_evaluation(y_test, yhat_test, )
+    model_evaluation(y_test, yhat_test, X_train.shape[0], X_train.shape[1])
 
 
 for degree in range(1, 6):
@@ -570,12 +596,24 @@ for degree in range(1, 8):
     train_model(degree=degree, normalization=True)
 
 for degree in range(1, 6):
-    train_model(degree=degree, regularization='ridge', reg_coef=0.01, normalization=True)
+    train_model(degree=degree, method='ridge', alpha=0.01)
 
 for degree in range(1, 6):
-    train_model(degree=degree, regularization='lasso', reg_coef=0.01, normalization=True)
+    train_model(degree=degree, method='lasso', alpha=0.01)
 
-print('Choose the best model.')
+for degree in range(1, 6):
+    train_model(degree=degree, method='OGD', alpha=0.01)
+
+for degree in range(1, 6):
+    train_model(degree=degree, method='ridge', alpha=0.01, normalization=True)
+
+for degree in range(1, 6):
+    train_model(degree=degree, method='lasso', alpha=0.01, normalization=True)
+
+for degree in range(1, 8):
+    train_model(degree=degree, method='OGD', alpha=0.01, normalization=True)
+
+print('Choosing the best model.')
 model_number = np.argmin(val_mses)
 test_model(model_number, params[model_number])
 print(params[model_number])
@@ -583,8 +621,7 @@ print(params[model_number])
 # Ilustracija koeficijenata
 plt.figure(figsize=(10,5))
 plt.bar(range(len(models[model_number].coef_)), models[model_number].coef_)
-plt.show()
-print("koeficijenti: ", models[model_number].coef_)
+# print("koeficijenti: ", models[model_number].coef_)
 
 
 # utils.plot_train_cv_mses(degrees,
@@ -597,29 +634,6 @@ print("koeficijenti: ", models[model_number].coef_)
 # yhat_test = linear_model.predict(X_test_scaled_poly)
 # print(f"Cross validation MSE: {mean_squared_error(yhat_test, y_test) / 2}")
 
-
-def model_evaluation(y, y_predicted, N, d):
-    mse = mean_squared_error(y_test,
-                             y_predicted)  # np.mean((y_test-y_predicted)**2)
-    mae = mean_absolute_error(
-        y_test, y_predicted)  # np.mean(np.abs(y_test-y_predicted))
-    rmse = np.sqrt(mse)
-    r2 = r2_score(y_test, y_predicted)
-    r2_adj = 1 - (1 - r2) * (N - 1) / (N - d - 1)
-
-    # printing values
-    print('Mean squared error: ', mse)
-    print('Mean absolute error: ', mae)
-    print('Root mean squared error: ', rmse)
-    print('R2 score: ', r2)
-    print('R2 adjusted score: ', r2_adj)
-
-    # Uporedni prikaz nekoliko pravih i predvidjenih vrednosti
-    res = pd.concat([pd.DataFrame(y.values),
-                     pd.DataFrame(y_predicted)],
-                    axis=1)
-    res.columns = ['y', 'y_pred']
-    print(res.head(20))
 
 
 # model_evaluation(y_test, yhat_test, X_train_scaled.shape[0],
