@@ -37,6 +37,15 @@ def print_red(text):
     print(bcolors.FAIL + text + bcolors.ENDC)
 
 
+def print_yellow(text):
+    """
+    Ispisati tekst u žutoj boji.
+
+    Funkcija je namenjena naglašavanju parametara modela koji se obučava.
+    """
+    print(bcolors.WARNING + text + bcolors.ENDC)
+
+
 def implication(p, q):
     """
     Logička implikacija.
@@ -481,15 +490,21 @@ scalers = []
 
 print('Testiraće se modeli sa sledećim parametrima: sa i bez normalizacije, sa Lasso, Ridge i bez regularizacije, za različite veličine polinoma fitovanja, sa i bez interakcije fičera i različite grupe fičera, sa MSE i gradient descent metodom sa različitim faktorom učenja. ')
 print('Ukupno ima 2*3*10=60 kombinacija ne računajući izbor fičera.')
+print('Pretpostavka: treba prvo polinomijalne fičere napraviti pa onda skalirati.')
 
 
 def test_model(normalization=False, regularization=None, degree=1, features=['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx'], method='MSE', alpha=None):
-    print('TEST TEST TEST')
+    # https://datascience.stackexchange.com/questions/20525/should-i-standardize-first-or-generate-polynomials-first
+    print_yellow(f"Model: norm={normalization}, reg={regularization}, deg={degree}, method={method}")
     poly = PolynomialFeatures(degree, include_bias=False)
     X_train_poly = poly.fit_transform(X_train)
 
     scaler_poly = StandardScaler()
-    X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
+
+    if normalization:
+        X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
+    else:
+        X_train_scaled_poly = X_train_poly
 
     scalers.append(scaler_poly)
 
@@ -504,20 +519,20 @@ def test_model(normalization=False, regularization=None, degree=1, features=['TE
     train_mses.append(mean_squared_error(y_train, yhat) / 2)
 
     X_val_poly = poly.fit_transform(X_val)
-    X_val_scaled_poly = scaler_poly.transform(X_val_poly)
+    if normalization:
+        X_val_scaled_poly = scaler_poly.transform(X_val_poly)
+    else:
+        X_val_scaled_poly = X_val_poly
     yhat_val = linear_model.predict(X_val_scaled_poly)
     print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
     val_mses.append(mean_squared_error(yhat_val, y_val) / 2)
 
     print("-" * 100)
 
-test_model()
-print('val mses = ')
-print(val_mses)
+test_model(normalization=True)
 
 
 for degree in range(1, 11):
-    # https://datascience.stackexchange.com/questions/20525/should-i-standardize-first-or-generate-polynomials-first
     poly = PolynomialFeatures(degree, include_bias=False)
     X_train_poly = poly.fit_transform(X_train)
 
