@@ -487,57 +487,34 @@ train_mses = []
 val_mses = []
 models = []
 scalers = []
+params = []
 
 print('Testiraće se modeli sa sledećim parametrima: sa i bez normalizacije, sa Lasso, Ridge i bez regularizacije, za različite veličine polinoma fitovanja, sa i bez interakcije fičera i različite grupe fičera, sa MSE i gradient descent metodom sa različitim faktorom učenja. ')
 print('Ukupno ima 2*3*10=60 kombinacija ne računajući izbor fičera.')
 print('Pretpostavka: treba prvo polinomijalne fičere napraviti pa onda skalirati.')
 
 
-def test_model(normalization=False, regularization=None, degree=1, features=['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx'], method='MSE', alpha=None):
+def train_model(normalization=False, regularization=None, degree=1, features=['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx'], method='MSE', alpha=None):
     # https://datascience.stackexchange.com/questions/20525/should-i-standardize-first-or-generate-polynomials-first
     print_yellow(f"Model: norm={normalization}, reg={regularization}, deg={degree}, method={method}")
+    params_dict = {"norm":normalization, "reg":regularization, "deg":degree, "features":features, "method":method, "alpha":alpha}
+    params.append(params_dict)
+
+    X_train_curr = X_train.loc[:, features]
+    X_val_curr = X_val.loc[:, features]
+
     poly = PolynomialFeatures(degree, include_bias=False)
-    X_train_poly = poly.fit_transform(X_train)
+    X_train_poly = poly.fit_transform(X_train_curr)
+    X_val_poly = poly.fit_transform(X_val_curr)
 
     scaler_poly = StandardScaler()
 
     if normalization:
         X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
-    else:
-        X_train_scaled_poly = X_train_poly
-
-    scalers.append(scaler_poly)
-
-    linear_model = LinearRegression(fit_intercept=True)
-    linear_model.fit(X_train_scaled_poly, y_train)
-    models.append(linear_model)
-
-    yhat = linear_model.predict(X_train_scaled_poly)
-    print(
-        f"training MSE (using sklearn function): {mean_squared_error(y_train, yhat) / 2}"
-    )
-    train_mses.append(mean_squared_error(y_train, yhat) / 2)
-
-    X_val_poly = poly.fit_transform(X_val)
-    if normalization:
         X_val_scaled_poly = scaler_poly.transform(X_val_poly)
     else:
+        X_train_scaled_poly = X_train_poly
         X_val_scaled_poly = X_val_poly
-    yhat_val = linear_model.predict(X_val_scaled_poly)
-    print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
-    val_mses.append(mean_squared_error(yhat_val, y_val) / 2)
-
-    print("-" * 100)
-
-test_model(normalization=True)
-
-
-for degree in range(1, 11):
-    poly = PolynomialFeatures(degree, include_bias=False)
-    X_train_poly = poly.fit_transform(X_train)
-
-    scaler_poly = StandardScaler()
-    X_train_scaled_poly = scaler_poly.fit_transform(X_train_poly)
 
     scalers.append(scaler_poly)
 
@@ -551,21 +528,47 @@ for degree in range(1, 11):
     )
     train_mses.append(mean_squared_error(y_train, yhat) / 2)
 
-    X_val_poly = poly.fit_transform(X_val)
-    X_val_scaled_poly = scaler_poly.transform(X_val_poly)
     yhat_val = linear_model.predict(X_val_scaled_poly)
-    print(f"Cross validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
+    print(f"validation MSE: {mean_squared_error(yhat_val, y_val) / 2}")
     val_mses.append(mean_squared_error(yhat_val, y_val) / 2)
 
     print("-" * 100)
 
     # TODO : SGDRegress
 
-degrees = range(1, 11)
-utils.plot_train_cv_mses(degrees,
-                         train_mses,
-                         val_mses,
-                         title="degree of polynomial vs. train and CV MSEs")
+def test_model(model_number, params_dict):
+    print_yellow('TEST RESULTS')
+    features = params_dict["features"]
+    degree = params_dict["deg"]
+    normalization = params_dict["norm"]
+
+    X_test_curr = X_test.loc[:, features]
+    poly = PolynomialFeatures(degree, include_bias=False)
+    X_test_poly = poly.fit_transform(X_test_curr)
+    if normalization:
+        X_test_poly_scaled = scalers[model_number].transform(X_test_poly)
+    else:
+        X_test_poly_scaled = X_test_poly
+    yhat_test = models[model_number].predict(X_test_poly_scaled)
+    print(f"test MSE: {mean_squared_error(yhat_test, y_test) / 2}")
+    # model_evaluation(y_test, yhat_test, )
+
+
+for degree in range(1, 6):
+    train_model(degree=degree)
+
+for degree in range(1, 8):
+    train_model(degree=degree, normalization=True)
+
+print('Choose the best model:')
+model_number = np.argmin(val_mses)
+test_model(model_number, params[model_number])
+
+
+# utils.plot_train_cv_mses(degrees,
+#                          train_mses,
+#                          val_mses,
+#                          title="degree of polynomial vs. train and CV MSEs")
 
 # X_test_poly = poly.fit_transform(X_test)
 # X_test_scaled_poly = scaler_linear.transform(X_test_poly)
@@ -597,6 +600,6 @@ def model_evaluation(y, y_predicted, N, d):
     print(res.head(20))
 
 
-model_evaluation(y_test, yhat_test, X_train_scaled.shape[0],
-                 X_train_scaled.shape[1])
+# model_evaluation(y_test, yhat_test, X_train_scaled.shape[0],
+#                  X_train_scaled.shape[1])
 plt.show()
