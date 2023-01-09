@@ -479,10 +479,11 @@ print_red(
 )
 
 X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx']]
-X['pt'] = X['PRES'] * X['TEMP']
-X['pd'] = X['PRES'] * X['DEWP']
-X['td'] = X['TEMP'] * X['DEWP']
-X['ptd'] = X['PRES'] * X['TEMP'] * X['DEWP']
+temp_min = 40
+X['pt'] = X['PRES'] * (X['TEMP']+temp_min)
+X['pd'] = X['PRES'] * (X['DEWP']+temp_min)
+X['td'] = (X['TEMP']+temp_min) * (X['DEWP']+temp_min)
+X['ptd'] = X['PRES'] * (X['TEMP']+temp_min) * (X['DEWP']+temp_min)
 print(X.head())
 y = df['PM_US Post'].copy()
 X_train, X_test, y_train, y_test = train_test_split(X,
@@ -597,7 +598,7 @@ def test_model(model_number, params_dict):
     else:
         X_test_poly_scaled = X_test_poly
     yhat_test = models[model_number].predict(X_test_poly_scaled)
-    print(f"test MSE: {mean_squared_error(yhat_test, y_test) / 2}")
+    print(f"test MSE: {mean_squared_error(yhat_test, y_test)}")
     model_evaluation(y_test, yhat_test, X_train.shape[0], X_train.shape[1])
 
 for alpha in [0.1, 0.01, 0.001, 0.0001]:
