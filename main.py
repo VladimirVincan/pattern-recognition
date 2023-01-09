@@ -458,7 +458,7 @@ print_red(
 
 
 """ ================================================ """
-print_red(bcolors.BOLD + bcolors.UNDERLINE + "II DEO: ANALIZA PODATAKA")
+print_red(bcolors.BOLD + bcolors.UNDERLINE + "II DEO: LINEARNA REGRESIJA")
 """ ================================================ """
 print_red(
     "1. Potrebno je 15% nasumično izabranih uzoraka ostaviti kao test skup, 15% kao validacioni a preostalih 70% koristiti za obuku modela."
@@ -638,4 +638,36 @@ plt.bar(range(len(models[model_number].coef_)), models[model_number].coef_)
 
 # model_evaluation(y_test, yhat_test, X_train_scaled.shape[0],
 #                  X_train_scaled.shape[1])
+
+
+""" ================================================ """
+print_red(bcolors.BOLD + bcolors.UNDERLINE + "III DEO: KNN KLASIFIKATOR")
+""" ================================================ """
+print_red("1. Prvo je potrebno uzorcima iz date baze dodeliti labele: bezbedno, nebezbedno ili opasno. Uzorcima čija je vrednost koncentracije PM2.5 čestica do 55.4 µg/m3 dodeliti labelu bezbedno, onima čija je vrednost koncentracije PM2.5 čestica od 55.5 µg/m3 do 150.4 µg/m3 dodeliti labelu nebezbedno, dok onima sa vrednošću preko 150.5 µg/m3 dodeliti labelu opasno.")
+
+df['class'] = ""
+if df['PM_US Post'] <= 55.4:
+    df['class'] = 'bezbedno'
+elif df['PM_US Post'] <= 150.4:
+    df['class'] = 'nebezbedno'
+else:
+    df['class'] = 'opasno'
+
+print(df.head())
+
+print_red("Koristiti 15% uzoraka za testiranje finalnog klasifikatora, a preostalih 85% uzoraka koristiti za metodu unakrsne validacije sa 10 podskupova. Ovom metodom odrediti optimalne parametre klasifikatora, oslanjajući se na željenu meru uspešnosti. Obratiti pažnju da u svakom od podskupova za unakrsnu validaciju, kao i u test skupu, bude dovoljan broj uzoraka svake klase.")
+
+
+print_red("Za konačno odabrane parametre prikazati i analizirati matricu konfuzije dobijenu akumulacijom matrica iz svake od 10 iteracija unakrsne validacije. Odrediti prosečnu tačnost klasifikatora, kao i tačnost za svaku klasu.")
+
+
+print_red("Klasifikator sa konačno odabranim parametrima obučiti na celokupnom trening skupu, pa testirati na izdvojenom test skupu. Na osnovu dobijene matrice konfuzije izračunati mere uspešnosti klasifikatora, kao i mere uspešnosti za svaku klasu (tačnost, osetljivost, specifičnost, preciznost, F-mera).")
+
+
+print_red("Rezultate prikazati i diskutovati u izveštaju.")
+
+
+""" ================================================ """
+print_red(bcolors.BOLD + bcolors.UNDERLINE + "KRAJ - isplotovati sve")
+""" ================================================ """
 plt.show()
