@@ -653,7 +653,7 @@ plt.bar(range(len(models[model_number].coef_)), models[model_number].coef_)
 #                  X_train_scaled.shape[1])
 
 
-plt.show()
+# plt.show()
 # quit()
 """ ================================================ """
 print_red(bcolors.BOLD + bcolors.UNDERLINE + "III DEO: KNN KLASIFIKATOR")
@@ -672,7 +672,7 @@ print(df.loc[:, ['PM_US Post', 'class']].head(50))
 
 print_red("2. Koristiti 15% uzoraka za testiranje finalnog klasifikatora, a preostalih 85% uzoraka koristiti za metodu unakrsne validacije sa 10 podskupova. Ovom metodom odrediti optimalne parametre klasifikatora, oslanjajući se na željenu meru uspešnosti. Obratiti pažnju da u svakom od podskupova za unakrsnu validaciju, kao i u test skupu, bude dovoljan broj uzoraka svake klase.")
 
-X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx', 'cbwdy', 'precipitation', 'Iprec']]
+X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx', 'cbwdy', 'Iws', 'doy', 'precipitation', 'Iprec']]
 y = df['class'].copy()
 
 # Održati klasni odnos originalnih podataka.
