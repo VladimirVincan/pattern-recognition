@@ -11,6 +11,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import Normalizer, StandardScaler, PolynomialFeatures
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, SGDRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, LeaveOneOut
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import accuracy_score
 
 
 class bcolors:
@@ -651,23 +655,72 @@ df.loc[df['PM_US Post'] <= 150.4, 'class'] = 'nebezbedno'
 df.loc[df['PM_US Post'] <= 55.4, 'class'] = 'bezbedno'
 print(df.loc[:, ['PM_US Post', 'class']].head(50))
 
-print_red("Koristiti 15% uzoraka za testiranje finalnog klasifikatora, a preostalih 85% uzoraka koristiti za metodu unakrsne validacije sa 10 podskupova. Ovom metodom odrediti optimalne parametre klasifikatora, oslanjajući se na željenu meru uspešnosti. Obratiti pažnju da u svakom od podskupova za unakrsnu validaciju, kao i u test skupu, bude dovoljan broj uzoraka svake klase.")
+print_red("2. Koristiti 15% uzoraka za testiranje finalnog klasifikatora, a preostalih 85% uzoraka koristiti za metodu unakrsne validacije sa 10 podskupova. Ovom metodom odrediti optimalne parametre klasifikatora, oslanjajući se na željenu meru uspešnosti. Obratiti pažnju da u svakom od podskupova za unakrsnu validaciju, kao i u test skupu, bude dovoljan broj uzoraka svake klase.")
 
-X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx']]
-y = df['PM_US Post'].copy()
+X = df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx', 'cbwdy', 'precipitation', 'Iprec']]
+y = df['class'].copy()
 
+# Održati klasni odnos originalnih podataka.
 X_train, X_test, y_train, y_test = train_test_split(X,
                                                     y,
-                                                    test_size=0.3,
-                                                    random_state=42)
+                                                    test_size=0.15,
+                                                    random_state=42,
+                                                    shuffle=True,
+                                                    stratify=y)
 
-print_red("Za konačno odabrane parametre prikazati i analizirati matricu konfuzije dobijenu akumulacijom matrica iz svake od 10 iteracija unakrsne validacije. Odrediti prosečnu tačnost klasifikatora, kao i tačnost za svaku klasu.")
+kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+# https://scikit-learn.org/stable/modules/generated/sklearn.metrics.DistanceMetric.html
+# parameters = {'metric':['euclidean', 'manhattan', 'chebyshev', 'minkowski', 'seuclidean', 'mahalanobis'], 'n_neighbors':np.arange(1, 14)}
+parameters = {'metric':['euclidean'], 'n_neighbors':np.arange(1, 10)}
+knn = KNeighborsClassifier()
+clf = GridSearchCV(estimator=knn, param_grid=parameters, scoring='accuracy', cv=kfold, refit=True, verbose=3)
+clf.fit(X_train, y_train)
+
+print(clf.best_score_)
+print(clf.best_params_)
+
+yhat_test = clf.predict(X_test)
+
+print_red("3. Za konačno odabrane parametre prikazati i analizirati matricu konfuzije dobijenu akumulacijom matrica iz svake od 10 iteracija unakrsne validacije. Odrediti prosečnu tačnost klasifikatora, kao i tačnost za svaku klasu.")
+
+def minor(arr, i, j):
+    minor = [row[:j] + row[j+1:] for row in (arr[:i] + arr[i+1:])]
+    return np.array(minor)
+
+def evaluation_classifier(conf_mat):
+    tp = np.diag(conf_mat)
+    fn = np.sum(conf_mat, axis=1) - np.diag(conf_mat) # suma po vrstama
+    fp = np.sum(conf_mat, axis=0) - np.diag(conf_mat) # suma po kolonama
+    tn = np.full(shape=3, fill_value=np.sum(conf_mat)) - np.sum(conf_mat, axis=1) - np.sum(conf_mat, axis=0) + np.diag(conf_mat) # suma minornih matrica
+    # alternativno:
+    # tn2 = [np.sum(minor(conf_mat.tolist(), 0, 0)), np.sum(minor(conf_mat.tolist(), 1, 1)), np.sum(minor(conf_mat.tolist(), 2, 2))]
+
+    precision = tp/(tp+fp)
+    accuracy = (tp+tn)/(tp+tn+fp+fn)
+    sensitivity = tp/(tp+fn)
+    specificity = tn/(tn+fp)
+    F_score = 2*precision*sensitivity/(precision+sensitivity)
+
+    class_name = ['bezbedno', 'nebezbedno', 'opasno']
+
+    for i in range(3):
+        print('\nKlasa: ', class_name[i])
+        print('precision: ', precision[i])
+        print('accuracy: ', accuracy[i])
+        print('sensitivity/recall: ', sensitivity[i])
+        print('specificity: ', specificity[i])
+        print('F score: ', F_score[i])
+
+conf_mat = confusion_matrix(y_test, yhat_test, labels=clf.classes_)
+
+disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat,  display_labels=clf.classes_)
+disp.plot(cmap="Blues")
+evaluation_classifier(conf_mat)
+
+print_red("4. Klasifikator sa konačno odabranim parametrima obučiti na celokupnom trening skupu, pa testirati na izdvojenom test skupu. Na osnovu dobijene matrice konfuzije izračunati mere uspešnosti klasifikatora, kao i mere uspešnosti za svaku klasu (tačnost, osetljivost, specifičnost, preciznost, F-mera).")
 
 
-print_red("Klasifikator sa konačno odabranim parametrima obučiti na celokupnom trening skupu, pa testirati na izdvojenom test skupu. Na osnovu dobijene matrice konfuzije izračunati mere uspešnosti klasifikatora, kao i mere uspešnosti za svaku klasu (tačnost, osetljivost, specifičnost, preciznost, F-mera).")
-
-
-print_red("Rezultate prikazati i diskutovati u izveštaju.")
+print_red("5. Rezultate prikazati i diskutovati u izveštaju.")
 
 
 """ ================================================ """
