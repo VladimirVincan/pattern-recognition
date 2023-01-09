@@ -572,8 +572,6 @@ def train_model(normalization=False, method='MSE', alpha=None, degree=1, feature
 
     print("-" * 100)
 
-    # TODO : SGDRegress
-
 
 def test_model(model_number, params_dict):
     print_yellow('TEST RESULTS')
@@ -592,7 +590,7 @@ def test_model(model_number, params_dict):
     print(f"test MSE: {mean_squared_error(yhat_test, y_test) / 2}")
     model_evaluation(y_test, yhat_test, X_train.shape[0], X_train.shape[1])
 
-
+# for alpha in [0.1, 0.01, 0.001, 0.0001]:
 for degree in range(1, 6):
     train_model(degree=degree)
 
@@ -647,6 +645,8 @@ plt.bar(range(len(models[model_number].coef_)), models[model_number].coef_)
 """ ================================================ """
 print_red(bcolors.BOLD + bcolors.UNDERLINE + "III DEO: KNN KLASIFIKATOR")
 """ ================================================ """
+
+
 print_red("1. Prvo je potrebno uzorcima iz date baze dodeliti labele: bezbedno, nebezbedno ili opasno. Uzorcima čija je vrednost koncentracije PM2.5 čestica do 55.4 µg/m3 dodeliti labelu bezbedno, onima čija je vrednost koncentracije PM2.5 čestica od 55.5 µg/m3 do 150.4 µg/m3 dodeliti labelu nebezbedno, dok onima sa vrednošću preko 150.5 µg/m3 dodeliti labelu opasno.")
 
 # https://medium.com/analytics-vidhya/pandas-how-to-change-value-based-on-condition-fc8ee38ba529
@@ -654,6 +654,8 @@ df['class'] = 'opasno'
 df.loc[df['PM_US Post'] <= 150.4, 'class'] = 'nebezbedno'
 df.loc[df['PM_US Post'] <= 55.4, 'class'] = 'bezbedno'
 print(df.loc[:, ['PM_US Post', 'class']].head(50))
+
+
 
 print_red("2. Koristiti 15% uzoraka za testiranje finalnog klasifikatora, a preostalih 85% uzoraka koristiti za metodu unakrsne validacije sa 10 podskupova. Ovom metodom odrediti optimalne parametre klasifikatora, oslanjajući se na željenu meru uspešnosti. Obratiti pažnju da u svakom od podskupova za unakrsnu validaciju, kao i u test skupu, bude dovoljan broj uzoraka svake klase.")
 
@@ -670,8 +672,11 @@ X_train, X_test, y_train, y_test = train_test_split(X,
 
 kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.DistanceMetric.html
-# parameters = {'metric':['euclidean', 'manhattan', 'chebyshev', 'minkowski', 'seuclidean', 'mahalanobis'], 'n_neighbors':np.arange(1, 14)}
-parameters = {'metric':['euclidean'], 'n_neighbors':np.arange(1, 10)}
+# Izbacio sam seuciledan i mahalanobis - vraća error.
+metrics = ['euclidean', 'manhattan', 'chebyshev', 'minkowski']
+# metrics = ['euclidean']
+n_neighbors = np.arange(1,14)
+parameters = {'metric':metrics, 'n_neighbors':n_neighbors}
 knn = KNeighborsClassifier()
 clf = GridSearchCV(estimator=knn, param_grid=parameters, scoring='accuracy', cv=kfold, refit=True, verbose=3)
 clf.fit(X_train, y_train)
@@ -681,7 +686,12 @@ print(clf.best_params_)
 
 yhat_test = clf.predict(X_test)
 
+
+
 print_red("3. Za konačno odabrane parametre prikazati i analizirati matricu konfuzije dobijenu akumulacijom matrica iz svake od 10 iteracija unakrsne validacije. Odrediti prosečnu tačnost klasifikatora, kao i tačnost za svaku klasu.")
+
+
+print('a. Tačnost za najbolju klasu.')
 
 def minor(arr, i, j):
     minor = [row[:j] + row[j+1:] for row in (arr[:i] + arr[i+1:])]
@@ -701,29 +711,109 @@ def evaluation_classifier(conf_mat):
     specificity = tn/(tn+fp)
     F_score = 2*precision*sensitivity/(precision+sensitivity)
 
-    class_name = ['bezbedno', 'nebezbedno', 'opasno']
-
     for i in range(3):
-        print('\nKlasa: ', class_name[i])
+        print('\nKlasa: ', clf.classes_[i])
         print('precision: ', precision[i])
         print('accuracy: ', accuracy[i])
         print('sensitivity/recall: ', sensitivity[i])
         print('specificity: ', specificity[i])
         print('F score: ', F_score[i])
 
+    tp = np.sum(tp)
+    fn = np.sum(fn)
+    fp = np.sum(fp)
+    tn = np.sum(tn)
+
+    precision = tp/(tp+fp)
+    accuracy = (tp+tn)/(tp+tn+fp+fn)
+    sensitivity = tp/(tp+fn)
+    specificity = tn/(tn+fp)
+    F_score = 2*precision*sensitivity/(precision+sensitivity)
+
+    print('\nProsečna tačnost klasifikatora:')
+    print('precision: ', precision)
+    print('accuracy: ', accuracy)
+    print('sensitivity/recall: ', sensitivity)
+    print('specificity: ', specificity)
+    print('F score: ', F_score)
+
 conf_mat = confusion_matrix(y_test, yhat_test, labels=clf.classes_)
 
 disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat,  display_labels=clf.classes_)
 disp.plot(cmap="Blues")
+disp.ax_.set_title('Matrica konfuzije za najbolji model pronađen prilikom pretrage')
 evaluation_classifier(conf_mat)
+
+
+print('b. Tačnost dobijena usrednjavanjem i matrica konfuzije dobijena akumulacijom.')
+
+indexes = list(kfold.split(X_train, y_train))
+
+# metric = clf.best_params_['metric']
+for metric in metrics:
+    conf_mat_sum = np.zeros((3, 3))
+    accuracy = []
+
+    for k in n_neighbors:
+
+        tmp_accuracy = []
+
+        for train_index, test_index in indexes:
+
+            Xfold_train = X_train.iloc[train_index,:]
+            yfold_train = y_train.iloc[train_index]
+
+            Xfold_test = X_train.iloc[test_index,:]
+            yfold_test = y_train.iloc[test_index]
+
+            knn = KNeighborsClassifier(n_neighbors=k, metric=metric)
+            knn.fit(Xfold_train, yfold_train)
+
+            yfold_pred = knn.predict(Xfold_test)
+            tmp_accuracy.append(accuracy_score(yfold_test, yfold_pred))
+            conf_mat_sum += confusion_matrix(yfold_test, yfold_pred, labels=clf.classes_)
+
+        accuracy.append(np.mean(tmp_accuracy))
+
+    plt.figure()
+    plt.plot(range(1, 14), accuracy, color='red', linestyle='dashed', marker='o', markerfacecolor='blue', markersize=10)
+    plt.title('Accuracy for ' + metric)
+    plt.xlabel('K Value')
+    plt.ylabel('Acc')
+
+    disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat,  display_labels=clf.classes_)
+    disp.plot(cmap="Blues")
+    disp.ax_.set_title('Matrica konfuzije za metriku ' + str(metric))
+    print_yellow('\nMetrika: ' + metric)
+    evaluation_classifier(conf_mat_sum)
+
+
 
 print_red("4. Klasifikator sa konačno odabranim parametrima obučiti na celokupnom trening skupu, pa testirati na izdvojenom test skupu. Na osnovu dobijene matrice konfuzije izračunati mere uspešnosti klasifikatora, kao i mere uspešnosti za svaku klasu (tačnost, osetljivost, specifičnost, preciznost, F-mera).")
 
+print('Najbolji rezultati su sa sledećim parametrima: ', clf.best_params_)
+knn_best = KNeighborsClassifier(n_neighbors = clf.best_params_['n_neighbors'], metric = clf.best_params_['metric'])
+knn_best.fit(X_train, y_train)
+yhat_best = knn_best.predict(X_test)
+conf_mat = confusion_matrix(yhat_best, y_test, labels=clf.classes_)
+
+disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat,  display_labels=clf.classes_)
+disp.plot(cmap="Blues")
+evaluation_classifier(conf_mat)
+disp.ax_.set_title('Matrica konfuzije za najbolju metriku obučenu na celom trening skupu.')
+
+
+
 
 print_red("5. Rezultate prikazati i diskutovati u izveštaju.")
+print("Rezultati su prikazani i diskutovani.")
+
+
+
 
 
 """ ================================================ """
-print_red(bcolors.BOLD + bcolors.UNDERLINE + "KRAJ - isplotovati sve")
+print_red(bcolors.BOLD + bcolors.UNDERLINE + "KRAJ")
 """ ================================================ """
+print("Isplotovati sve grafike.")
 plt.show()
