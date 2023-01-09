@@ -104,21 +104,21 @@ print(
 )
 
 print_red("4c. Kojim obeležjima raspolažemo?")
-print(
-    "No - redni broj obeležja. Da li su obeležja vremenski sortirana po rastućem redosledu?"
-)
-print()
-print("year - godina.")
-print("month - mesec.")
-print(
-    "day - dan. Da li je ispoštovano da mesec ima odgovarajući broj dana u godini?"
-)
-print()
-print("hour - sat u danu. Da li svaki dan ima 24 sata?")
-print()
-print(
-    "season - godišnje doba. Prvo godišnje doba počinje 1. marta, drugo 1. juna, treće 1. septembra i četvrto 1. decembra."
-)
+# print(
+#     "No - redni broj obeležja. Da li su obeležja vremenski sortirana po rastućem redosledu?"
+# )
+# print()
+# print("year - godina.")
+# print("month - mesec.")
+# print(
+#     "day - dan. Da li je ispoštovano da mesec ima odgovarajući broj dana u godini?"
+# )
+# print()
+# print("hour - sat u danu. Da li svaki dan ima 24 sata?")
+# print()
+# print(
+#     "season - godišnje doba. Prvo godišnje doba počinje 1. marta, drugo 1. juna, treće 1. septembra i četvrto 1. decembra."
+# )
 # TODO: godišnje doba
 print()
 print(
@@ -218,7 +218,6 @@ df.loc[df['TEMP'] < MIN_TEMP, 'TEMP'] = np.nan
 df.loc[df['TEMP'] > MAX_TEMP, 'TEMP'] = np.nan
 
 # TODO: da li se neki datumi, vremena pojavljuju više puta?
-# TODO: da li postoje
 
 # TODO: 12 meseci uvek, odgovarajući broj dana, svaki dan tačno 24 časa, temp vrednosti u okvirima dozvoljenih
 
@@ -443,6 +442,12 @@ df.plot.scatter(y='PM_US Post', x='Iws', c='b', ax=axes[2, 0])
 df.plot.scatter(y='PM_US Post', x='precipitation', c='b', ax=axes[2, 1])
 df.plot.scatter(y='PM_US Post', x='Iprec', c='b', ax=axes[2, 2])
 # TODO: 3d grafik zavisnosti vetra i PM cestica
+
+# rastaviti sliku na 2 dela jer jer ogromna
+sb.pairplot(df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx', 'PM_US Post']], x_vars=['PM_US Post'])
+sb.pairplot(df.loc[:, ['year', 'doy', 'hour', 'Iws', 'precipitation', 'Iprec', 'cbwdy', 'PM_US Post']], x_vars=['PM_US Post'])
+# najkorisnije - precipitation i Iprec
+sb.pairplot(df.loc[:, ['PM_US Post', 'precipitation', 'Iprec']], x_vars=['PM_US Post'])
 """ ================================================ """
 print_red("10. Analizirati međusobne korelacije obeležja.")
 plt.figure()
@@ -456,8 +461,13 @@ sb.heatmap(matrica_korelacije, annot=True)
 print_red(
     "11. Uraditi još nešto po sopstvenom izboru (takođe obavezna stavka).")
 # plt.show()
+print("prikazati zavisnost temperature od ostalih parametara")
+sb.pairplot(df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx']], x_vars=['TEMP'])
+sb.pairplot(df.loc[:, ['year', 'doy', 'hour', 'Iws', 'precipitation', 'Iprec', 'cbwdy', 'TEMP']], x_vars=['TEMP'])
 
-
+print("prikazati zavisnost dana u godini - doy, od ostalih parametara")
+sb.pairplot(df.loc[:, ['TEMP', 'PRES', 'DEWP', 'season', 'HUMI', 'cbwdx', 'doy']], x_vars=['doy'])
+sb.pairplot(df.loc[:, ['year', 'doy', 'hour', 'Iws', 'precipitation', 'Iprec', 'cbwdy']], x_vars=['doy'])
 
 
 
@@ -590,30 +600,30 @@ def test_model(model_number, params_dict):
     print(f"test MSE: {mean_squared_error(yhat_test, y_test) / 2}")
     model_evaluation(y_test, yhat_test, X_train.shape[0], X_train.shape[1])
 
-# for alpha in [0.1, 0.01, 0.001, 0.0001]:
-for degree in range(1, 6):
-    train_model(degree=degree)
+for alpha in [0.1, 0.01, 0.001, 0.0001]:
+    for degree in range(1, 6):
+        train_model(degree=degree)
 
-# for degree in range(1, 8):
-#     train_model(degree=degree, normalization=True)
+    for degree in range(1, 8):
+        train_model(degree=degree, normalization=True)
 
-# for degree in range(1, 6):
-#     train_model(degree=degree, method='ridge', alpha=0.01)
+    for degree in range(1, 6):
+        train_model(degree=degree, method='ridge', alpha=0.01)
 
-# for degree in range(1, 6):
-#     train_model(degree=degree, method='lasso', alpha=0.01)
+    for degree in range(1, 6):
+        train_model(degree=degree, method='lasso', alpha=0.01)
 
-# for degree in range(1, 6):
-#     train_model(degree=degree, method='OGD', alpha=0.01)
+    for degree in range(1, 6):
+        train_model(degree=degree, method='OGD', alpha=0.01)
 
-# for degree in range(1, 6):
-#     train_model(degree=degree, method='ridge', alpha=0.01, normalization=True)
+    for degree in range(1, 6):
+        train_model(degree=degree, method='ridge', alpha=0.01, normalization=True)
 
-# for degree in range(1, 6):
-#     train_model(degree=degree, method='lasso', alpha=0.01, normalization=True)
+    for degree in range(1, 6):
+        train_model(degree=degree, method='lasso', alpha=0.01, normalization=True)
 
-# for degree in range(1, 8):
-#     train_model(degree=degree, method='OGD', alpha=0.01, normalization=True)
+    for degree in range(1, 8):
+        train_model(degree=degree, method='OGD', alpha=0.01, normalization=True)
 
 print('Choosing the best model.')
 model_number = np.argmin(val_mses)
@@ -642,6 +652,8 @@ plt.bar(range(len(models[model_number].coef_)), models[model_number].coef_)
 #                  X_train_scaled.shape[1])
 
 
+plt.show()
+# quit()
 """ ================================================ """
 print_red(bcolors.BOLD + bcolors.UNDERLINE + "III DEO: KNN KLASIFIKATOR")
 """ ================================================ """
